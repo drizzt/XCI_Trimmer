@@ -153,6 +153,43 @@ def md5sum(block_size=2**16):
 
     print('{}  {}{}'.format(hash, filename, suffix))
 
+# if rom is trimmed, output sha1 hash of both trimmed and padded rom
+def sha1sum(block_size=2**16):
+
+    trimmed = False
+    if filesize < cartsize:
+        trimmed = True
+
+    sha1 = hashlib.sha1()
+    with open(filename, 'rb') as f:
+        data = f.read(block_size)
+        while data:
+            sha1.update(data)
+            data = f.read(block_size)
+    hash = sha1.hexdigest()
+
+    suffix = ''
+    if trimmed:
+        padding = bytearray(b'\xFF' * block_size)
+        pad_remainder = bytearray()
+
+        i = cartsize - filesize
+        chunks = int(i/block_size)
+        remainder = i - (chunks * block_size)
+        pad_remainder += b'\xFF' * remainder
+
+        for _ in range(chunks):
+            sha1.update(padding)
+        sha1.update(pad_remainder)
+
+        suffix = ' [trim size: {}]'.format(filesize)
+        print('{}  {}{}'.format(hash, filename, suffix))
+
+        suffix = ' [cart size: {}]'.format(cartsize)
+        hash = sha1.hexdigest()
+
+    print('{}  {}{}'.format(hash, filename, suffix))
+
 
 def main():
 
@@ -163,6 +200,7 @@ def main():
     group.add_argument('-t', '--trim', action='store_true', help='Trim excess bytes')
     group.add_argument('-p', '--pad', action='store_true', help='Restore excess bytes')
     group.add_argument('-m', '--md5', action='store_true', help='Compute md5 hash')
+    group.add_argument('-s', '--sha1', action='store_true', help='Compute sha1 hash')
     parser.add_argument('-c', '--copy', action='store_true', help='Creates a copy instead of modifying original file')
 
     # Check passed arguments
@@ -194,6 +232,11 @@ def main():
     # mimic output of md5sum on linux
     if args.md5:
         md5sum()
+        return
+
+    # mimic output of sha1sum on linux
+    if args.sha1:
+        sha1sum()
         return
 
     print('\n========== XCI Trimmer ==========\n')
